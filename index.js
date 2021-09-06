@@ -5,7 +5,7 @@ const { layers, width, height } = require("./input/config.js");
 const console = require("console");
 const canvas = createCanvas(width, height);
 const ctx = canvas.getContext("2d");
-const edition = myArgs.length > 0 ? Number(myArgs[0]) : 1;
+const edition = myArgs.length > 0 ? Number(myArgs[0]) : 100;
 var metadata = [];
 var attributes = [];
 var hash = [];
@@ -43,9 +43,24 @@ const addAttributes = (_element, _layer) => {
   decodedHash.push({ [_layer.id]: _element.id });
 };
 
-const drawLayer = async (_layer, _edition) => {
-  let element =
-    _layer.elements[Math.floor(Math.random() * _layer.elements.length)];
+const drawLayer = async (layerIndex, _edition) => {
+  //const elementIndex = Math.floor(Math.random() * _layer.elements.length);
+  //let element = _layer.elements[elementIndex];
+  const _layer = layers[layerIndex];
+  let element;
+  let totalElementsInLayerToGenerate = 0;
+  _layer.elements.map(element => totalElementsInLayerToGenerate += element.totalElementNeedToGenerate);
+  let sum=0, r=Math.random() * totalElementsInLayerToGenerate;
+  for (let elementIndex = 0; elementIndex < _layer.elements.length; elementIndex++) {
+    element = _layer.elements[elementIndex];
+    sum += element.totalElementNeedToGenerate;
+    if (r <= sum) {
+      element.totalElementNeedToGenerate -= 1;
+      //console.log(`totalElementNeedToGenerate for element ${element.fileName} is ${element.totalElementNeedToGenerate}`);
+      break;
+    }
+  }
+
   addAttributes(element, _layer);
   const image = await loadImage(`${_layer.location}${element.fileName}`);
   ctx.drawImage(
@@ -56,14 +71,27 @@ const drawLayer = async (_layer, _edition) => {
     _layer.size.height
   );
   saveLayer(canvas, _edition);
+  _layer.elements = null;
 };
 
-for (let i = 1; i <= edition; i++) {
-  layers.forEach((layer) => {
-    drawLayer(layer, i);
+
+for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
+  const layer = layers[layerIndex];
+  let probabilitySum = 0;
+  layer.elements.map(element => probabilitySum += +element.rarity);
+  layer.elements.map(element => {
+    element.rarity = element.rarity / probabilitySum;
+    element.totalElementNeedToGenerate = element.rarity * edition;
   });
-  addMetadata(i);
-  console.log("Creating edition " + i);
+  console.log("Init layer " + layerIndex);
+}
+
+for (let i = 1; i <= edition; i++) {
+  for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
+    drawLayer(layerIndex, i);
+    addMetadata(i);
+    console.log("Creating edition " + i);
+  }
 }
 
 fs.readFile("./output/_metadata.json", (err, data) => {

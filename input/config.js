@@ -1,28 +1,24 @@
 const fs = require("fs");
 const width = 1000;
 const height = 1000;
+const DEFAULT_PROBABILITY = 100;
 const dir = __dirname;
-const rarity = [
-  { key: "", val: "original" },
-  { key: "_r", val: "rare" },
-  { key: "_sr", val: "super rare" },
-];
+
+const probabilityRegex = /_p[\d]*_/;
 
 const addRarity = (_str) => {
-  let itemRarity;
-  rarity.forEach((r) => {
-    if (_str.includes(r.key)) {
-      itemRarity = r.val;
-    }
-  });
+  let itemRarity = DEFAULT_PROBABILITY;
+  const matches = _str.match(probabilityRegex);
+  if(matches && matches.length > 0){
+    const probability = matches[0];
+    itemRarity = probability.substring(2,probability.length -1);
+  }
   return itemRarity;
 };
 
 const cleanName = (_str) => {
   let name = _str.slice(0, -4);
-  rarity.forEach((r) => {
-    name = name.replace(r.key, "");
-  });
+  name = name.replace(probabilityRegex, "");
   return name;
 };
 
